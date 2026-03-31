@@ -207,22 +207,19 @@ fn rcc_config() -> embassy_stm32::rcc::Config {
     #[cfg(context = "st-nucleo-f401re")]
     {
         use embassy_stm32::rcc::*;
-        rcc.hse = Some(Hse {
-            freq: embassy_stm32::time::Hertz(8000000),
-            mode: HseMode::Bypass,
-        });
-        rcc.pll_src = PllSource::HSE;
+        rcc.hsi = true;
+        rcc.pll_src = PllSource::HSI;
         rcc.pll = Some(Pll {
-            prediv: PllPreDiv::DIV4,
-            mul: PllMul::MUL168,
+            prediv: PllPreDiv::DIV16,
+            mul: PllMul::MUL336,
             divp: Some(PllPDiv::DIV4),
             divq: Some(PllQDiv::DIV7),
             divr: None,
         });
-        rcc.ahb_pre = AHBPrescaler::DIV1;
-        rcc.apb1_pre = APBPrescaler::DIV4;
-        rcc.apb2_pre = APBPrescaler::DIV2;
         rcc.sys = Sysclk::PLL1_P;
+        rcc.ahb_pre = AHBPrescaler::DIV1;
+        rcc.apb1_pre = APBPrescaler::DIV2;
+        rcc.apb2_pre = APBPrescaler::DIV1;
     }
 
     #[cfg(context = "st-nucleo-f767zi")]
