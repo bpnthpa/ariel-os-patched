@@ -45,6 +45,8 @@ pub enum Frequency {
     UpTo100k(Kilohertz), // FIXME: use a ranged integer?
     /// Fast mode.
     UpTo400k(Kilohertz), // FIXME: use a ranged integer?
+    /// Fast mode plus.
+    UpTo1000k(Kilohertz), // FIXME: use a ranged integer?
 }
 
 #[doc(hidden)]
@@ -56,7 +58,7 @@ impl Frequency {
 
     #[must_use]
     pub const fn last() -> Self {
-        Self::UpTo400k(Kilohertz::kHz(400))
+        Self::UpTo1000k(Kilohertz::kHz(1000))
     }
 
     #[must_use]
@@ -74,6 +76,14 @@ impl Frequency {
                 if f.to_kHz() < 400 {
                     // NOTE(no-overflow): `f` is small enough due to if condition
                     Some(Self::UpTo400k(Kilohertz::kHz(f.to_kHz() + 1)))
+                } else {
+                    Some(Self::UpTo1000k(Kilohertz::kHz(1000)))
+                }
+            }
+            Self::UpTo1000k(f) => {
+                if f.to_kHz() < 1000 {
+                    // NOTE(no-overflow): `f` is small enough due to if condition
+                    Some(Self::UpTo1000k(Kilohertz::kHz(f.to_kHz() + 1)))
                 } else {
                     None
                 }
@@ -100,13 +110,21 @@ impl Frequency {
                     Some(Self::UpTo100k(Kilohertz::kHz(self.khz() - 1)))
                 }
             }
+            Self::UpTo1000k(f) => {
+                if f.to_kHz() > 400 + 1 {
+                    // NOTE(no-overflow): `f` is large enough due to if condition
+                    Some(Self::UpTo1000k(Kilohertz::kHz(f.to_kHz() - 1)))
+                } else {
+                    Some(Self::UpTo400k(Kilohertz::kHz(self.khz() - 1)))
+                }
+            }
         }
     }
 
     #[must_use]
     pub const fn khz(self) -> u32 {
         match self {
-            Self::UpTo100k(f) | Self::UpTo400k(f) => f.to_kHz(),
+            Self::UpTo100k(f) | Self::UpTo400k(f) | Self::UpTo1000k(f) => f.to_kHz(),
         }
     }
 }
@@ -116,7 +134,9 @@ ariel_os_embassy_common::impl_i2c_from_frequency_up_to!();
 impl From<Frequency> for Hertz {
     fn from(freq: Frequency) -> Self {
         match freq {
-            Frequency::UpTo100k(f) | Frequency::UpTo400k(f) => Hertz::khz(f.to_kHz()),
+            Frequency::UpTo100k(f) | Frequency::UpTo400k(f) | Frequency::UpTo1000k(f) => {
+                Hertz::khz(f.to_kHz())
+            }
         }
     }
 }
