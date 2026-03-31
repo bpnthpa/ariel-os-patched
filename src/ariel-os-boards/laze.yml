@@ -212,7 +212,7 @@ builders:
   - has_swi
   env:
     CARGO_ENV:
-    - CONFIG_SWI=USART2
+    - CONFIG_SWI=USART6
 - name: st-nucleo-f411re
   parent: stm32f411re
   provides:

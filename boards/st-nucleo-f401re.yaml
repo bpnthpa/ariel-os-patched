@@ -3,10 +3,10 @@ targets:
   st-nucleo-f401re:
     chip: stm32f401re
     ariel:
-      swi: USART2
+      swi: USART6
     leds:
       led0:
-        pin: PB5
+        pin: PA5
     buttons:
       button0:
         pin: PC13

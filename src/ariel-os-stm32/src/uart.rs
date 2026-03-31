@@ -279,8 +279,8 @@ define_uart_drivers!(
 #[cfg(context = "stm32f401re")]
 define_uart_drivers!(
    USART1 => USART1,
-   // USART2 => USART2, // Often used as SWI
-   USART6 => USART6,
+   USART2 => USART2,
+   // USART6 => USART6, // Used as SWI
 );
 #[cfg(context = "stm32f411re")]
 define_uart_drivers!(
