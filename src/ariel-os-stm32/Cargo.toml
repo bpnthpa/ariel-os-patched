@@ -25,6 +25,7 @@ embassy-stm32 = { workspace = true, default-features = false, features = [
 ] }
 embedded-hal-async = { workspace = true }
 embedded-io-async = { workspace = true, optional = true }
+embedded-io = { workspace = true, optional = true }
 paste = { workspace = true }
 portable-atomic = { workspace = true }
 static_cell = { workspace = true }

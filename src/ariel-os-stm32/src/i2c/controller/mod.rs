@@ -215,6 +215,10 @@ macro_rules! define_i2c_drivers {
     }
 }
 
+
+
+
+
 // We cannot impl From because both types are external to this crate.
 fn from_error(err: embassy_stm32::i2c::Error) -> ariel_os_embassy_common::i2c::controller::Error {
     use embassy_stm32::i2c::Error::{

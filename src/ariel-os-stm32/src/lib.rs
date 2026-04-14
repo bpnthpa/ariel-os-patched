@@ -329,37 +329,114 @@ fn rcc_config() -> embassy_stm32::rcc::Config {
 
     #[cfg(context = "st-steval-mkboxpro")]
     {
-        use embassy_stm32::rcc::*;
-
-        rcc.ls = LsConfig {
-            rtc: RtcClockSource::LSE,
-            lsi: true,
-            lse: Some(LseConfig {
-                peripherals_clocked: true,
-                frequency: embassy_stm32::time::Hertz(32768),
-                mode: LseMode::Oscillator(LseDrive::MediumHigh),
-            }),
+        use embassy_stm32::{
+             rcc::*,
         };
-        rcc.hsi = true;
-        rcc.hsi48 = Some(Hsi48Config {
-            sync_from_usb: true,
-        }); // needed for USB
-        rcc.sys = Sysclk::PLL1_R;
+
+        //   rcc.ls = LsConfig {
+        //       rtc: RtcClockSource::LSE,
+        //       lsi: true,
+        //       lse: Some(LseConfig {
+        //           peripherals_clocked: true,
+        //           frequency: embassy_stm32::time::Hertz(32768),
+        //           mode: LseMode::Oscillator(LseDrive::MediumHigh),
+        //       }),
+        //   };
+        //   rcc.hsi = true;
+        //   rcc.hsi48 = Some(Hsi48Config {
+        //       sync_from_usb: true,
+        //   }); // needed for USB
+        //   rcc.sys = Sysclk::PLL1_R;
+        //   rcc.hse = Some(Hse {
+        //       freq: embassy_stm32::time::Hertz(16_000_000),
+        //       mode: HseMode::Oscillator,
+        //   });
+        //   rcc.pll1 = Some(Pll {
+        //       source: PllSource::HSE,
+        //       prediv: PllPreDiv::DIV1,
+        //       mul: PllMul::MUL10,
+        //       divp: None,
+        //       divq: None,
+        //       divr: Some(PllDiv::DIV1), // sysclk 160Mhz (16 / 1 * 10 / 1)
+        //   });
+        //   rcc.sys = Sysclk::PLL1_R;
+        //   rcc.mux.iclksel = mux::Iclksel::HSI48;
+        //   rcc.voltage_range = VoltageScale::RANGE1;
+
+        // ── HSE: 16 MHz crystal ──────────────────────────────────────────────────
         rcc.hse = Some(Hse {
             freq: embassy_stm32::time::Hertz(16_000_000),
             mode: HseMode::Oscillator,
         });
+
+        // ── HSI48: for USB / RNG / SDMMC, CRS-locked to USB SOF ─────────────────
+        rcc.hsi48 = Some(Hsi48Config {
+            sync_from_usb: true,
+        });
+
+        // ── PLL1: SYSCLK @ 160 MHz ───────────────────────────────────────────────
+        // HSE 16 MHz / M=1 * N=10 / R=1 = 160 MHz
         rcc.pll1 = Some(Pll {
             source: PllSource::HSE,
             prediv: PllPreDiv::DIV1,
             mul: PllMul::MUL10,
-            divp: None,
-            divq: None,
-            divr: Some(PllDiv::DIV1), // sysclk 160Mhz (16 / 1 * 10 / 1)
+            divp: Some(PllDiv::DIV1), // 160 MHz (SAI1)
+            divq: Some(PllDiv::DIV2), //  80 MHz (FDCAN)
+            divr: Some(PllDiv::DIV1), // 160 MHz → SYSCLK
         });
+
+        // ── PLL2: ADC / ADF1 / MDF1 @ 15.36 MHz ────────────────────────────────
+        // HSE 16 MHz / M=2 * N=48 / R=25 = 15.36 MHz
+        rcc.pll2 = Some(Pll {
+            source: PllSource::HSE,
+            prediv: PllPreDiv::DIV2,
+            mul: PllMul::MUL48,
+            divp: Some(PllDiv::DIV2),  // 192 MHz
+            divq: Some(PllDiv::DIV7),  //  ~54.86 MHz
+            divr: Some(PllDiv::DIV25), //  15.36 MHz ← ADC/ADF1/MDF1
+        });
+
+        // ── PLL3: ADF1 / MDF1 alternate @ 15.36 MHz ─────────────────────────────
+        // HSE 16 MHz / M=2 * N=48 / Q=25 = 15.36 MHz
+        rcc.pll3 = Some(Pll {
+            source: PllSource::HSE,
+            prediv: PllPreDiv::DIV2,
+            mul: PllMul::MUL48,
+            divp: Some(PllDiv::DIV2),  // 192 MHz
+            divq: Some(PllDiv::DIV25), //  15.36 MHz ← ADF1/MDF1
+            divr: Some(PllDiv::DIV2),  // 192 MHz
+        });
+
+        // ── System clock tree ────────────────────────────────────────────────────
         rcc.sys = Sysclk::PLL1_R;
-        rcc.mux.iclksel = mux::Iclksel::HSI48;
+        rcc.ahb_pre = AHBPrescaler::DIV1; // HCLK  = 160 MHz
+        rcc.apb1_pre = APBPrescaler::DIV1; // PCLK1 = 160 MHz
+        rcc.apb2_pre = APBPrescaler::DIV1; // PCLK2 = 160 MHz
+        rcc.apb3_pre = APBPrescaler::DIV1; // PCLK3 = 160 MHz
+
+        // ── Voltage scaling: required for 160 MHz ────────────────────────────────
         rcc.voltage_range = VoltageScale::RANGE1;
+
+        // ── Low-speed clocks ─────────────────────────────────────────────────────
+        rcc.ls = LsConfig {
+            rtc: RtcClockSource::LSE, // accurate 32.768 kHz RTC
+            lsi: true,                // keep LSI on (IWDG / backup)
+            lse: Some(LseConfig {
+                frequency: embassy_stm32::time::Hertz(32_768),
+                mode: LseMode::Oscillator(LseDrive::High), // safe for board crystal
+                peripherals_clocked: true,
+            }),
+        };
+
+        // ── Peripheral clock muxes ───────────────────────────────────────────────
+        rcc.mux.iclksel = mux::Iclksel::HSI48; // 48 MHz USB
+        rcc.mux.i2c1sel = mux::I2csel::PCLK1; // 160 MHz → 0x00701F6B valid
+        rcc.mux.uart4sel = mux::Usartsel::PCLK1; // 160 MHz → 1843200 baud
+        rcc.mux.adcdacsel = mux::Adcdacsel::PLL2_R; // 15.36 MHz
+        rcc.mux.adf1sel = mux::Adfsel::PLL3_Q; // 15.36 MHz
+        // rcc.mux.sdmmcsel =  mux::Sdmmcsel::ICLK; // 48 MHz
+        rcc.mux.rngsel = mux::Rngsel::HSI48; // 48 MHz
+        rcc.mux.spi3sel = mux::Spi3sel::HSI; // 16 MHz
     }
 
     #[cfg(context = "stm32f042k6")]
